@@ -2,7 +2,66 @@
 #define __ST7735V2__
 
 #include "Adafruit_ST7735.h"
+#include "Adafruit_SPITFT.h"
+#include "Adafruit_GFX.h"
+#include "glcdfont.c"
 #include "SPI.h"
+
+#ifndef pgm_read_byte
+#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
+#endif
+#ifndef pgm_read_word
+#define pgm_read_word(addr) (*(const unsigned short *)(addr))
+#endif
+#ifndef pgm_read_dword
+#define pgm_read_dword(addr) (*(const unsigned long *)(addr))
+#endif
+
+// Pointers are a peculiar case...typically 16-bit on AVR boards,
+// 32 bits elsewhere.  Try to accommodate both...
+
+#if !defined(__INT_MAX__) || (__INT_MAX__ > 0xFFFF)
+#define pgm_read_pointer(addr) ((void *)pgm_read_dword(addr))
+#else
+#define pgm_read_pointer(addr) ((void *)pgm_read_word(addr))
+#endif
+
+inline GFXglyph *pgm_read_glyph_ptr(const GFXfont *gfxFont, uint8_t c) {
+#ifdef __AVR__
+  return &(((GFXglyph *)pgm_read_pointer(&gfxFont->glyph))[c]);
+#else
+  // expression in __AVR__ section may generate "dereferencing type-punned
+  // pointer will break strict-aliasing rules" warning In fact, on other
+  // platforms (such as STM32) there is no need to do this pointer magic as
+  // program memory may be read in a usual way So expression may be simplified
+  return gfxFont->glyph + c;
+#endif //__AVR__
+}
+
+inline uint8_t *pgm_read_bitmap_ptr(const GFXfont *gfxFont) {
+#ifdef __AVR__
+  return (uint8_t *)pgm_read_pointer(&gfxFont->bitmap);
+#else
+  // expression in __AVR__ section generates "dereferencing type-punned pointer
+  // will break strict-aliasing rules" warning In fact, on other platforms (such
+  // as STM32) there is no need to do this pointer magic as program memory may
+  // be read in a usual way So expression may be simplified
+  return gfxFont->bitmap;
+#endif //__AVR__
+}
+
+#ifndef min
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
+#ifndef _swap_int16_t
+#define _swap_int16_t(a, b)                                                    \
+  {                                                                            \
+    int16_t t = a;                                                             \
+    a = b;                                                                     \
+    b = t;                                                                     \
+  }
+#endif
 
 class ST7735V2 : public Adafruit_ST7735 {
   public:
@@ -34,8 +93,14 @@ class ST7735V2 : public Adafruit_ST7735 {
   void SPI_DC_LOW(void) {
     digitalWriteFast(dc_, LOW);
   }
+  // using Adafruit_GFX::drawChar;
+  void drawChar(int16_t x, int16_t y, unsigned char c,
+                            uint16_t color, uint16_t bg, uint8_t size_x,
+                            uint8_t size_y);
   protected:
-    
+    using Print::write;
+    size_t write(uint8_t);
+
     void startWrite() {
       hwspi._spi->beginTransaction(hwspi.settings);
       digitalWriteFast(cs_,LOW);

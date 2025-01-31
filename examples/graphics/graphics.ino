@@ -12,9 +12,9 @@
 
 #define CAPTEUR_THERMO D45
 
-#define CS_PIN  D7
-#define RESET_PIN D2
-#define DC_PIN D9
+#define CS_PIN  D2
+#define RESET_PIN D3
+#define DC_PIN D4
 
 SPISettings onlyEmitter(40000000,MSBFIRST,SPI_MODE0,true);
 
