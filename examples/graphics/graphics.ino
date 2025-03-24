@@ -1,52 +1,48 @@
 
 #include <Arduino.h>
 #include <SPI.h>
-#include <ST7735V2.h>
+#include <ST7789V2.h>
 #include <Adafruit_GFX.h>
 #include <GFXFonts.h>
 #include <Fonts/PoppinsMedium12pt7b.h>
-#include "img.h"
+// #include "img.h"
 
-#include <OneWire.h>
-#include <DallasTemperature.h>
-
-#define CAPTEUR_THERMO D45
-
-#define CS_PIN  D2
+#define CS_PIN  D4
 #define RESET_PIN D3
-#define DC_PIN D4
+#define DC_PIN D2
 
 SPISettings onlyEmitter(40000000,MSBFIRST,SPI_MODE0,true);
 
-ST7735V2 myTFT( &SPI, CS_PIN, DC_PIN, RESET_PIN);
-
-OneWire  ds_CAPTEUR_THERMO(CAPTEUR_THERMO);  // on pin CAPTEUR_THERMO (a 4.7K resistor is necessary)
-
-float LastTemperature = -273;
-
-DallasTemperature sensor_CAPTEUR_THERMO(&ds_CAPTEUR_THERMO);
+ST7789V2 myTFT( &SPI, CS_PIN, DC_PIN, RESET_PIN);
 
 void setup() {
     SPI.beginTransaction(onlyEmitter);
     Serial.begin(115200);
-
-    pinMode(CAPTEUR_THERMO, INPUT);
-    sensor_CAPTEUR_THERMO.begin();
-    sensor_CAPTEUR_THERMO.setResolution(9);
-
-    myTFT.initR(INITR_BLACKTAB);
-    myTFT.FillScreenFast(ST7735_WHITE);
+    Serial.println("start setup...");
+    myTFT.init(240,320);
+    Serial.println("cleanup screen");
+    myTFT.FillScreenFast(ST77XX_BLACK);
+    delay(1000);
     Serial.println("Ready !");
+    myTFT.FillRectangleFast(0,0,128,30,ST77XX_WHITE);
+    myTFT.setFont(&PoppinsMedium12pt7b);
+    myTFT.setTextColor(0xda28,ST77XX_WHITE);
+    myTFT.setTextSize(1);
+    myTFT.setCursor(0,20);
+    myTFT.print("HELLO");
 
 // swap pixel LSB/MSB
-    for( uint16_t i=0; i< Nom_HEIGHT * Nom_WIDTH ; i++) {
-        uint16_t hi = (Nom[i] & 0xFF00) >> 8;
-        uint16_t lo =  Nom[i] & 0xFF;
-        Nom[i] = lo<<8 | hi;
-    }
+    // for( uint16_t i=0; i< Nom_HEIGHT * Nom_WIDTH ; i++) {
+    //     uint16_t hi = (Nom[i] & 0xFF00) >> 8;
+    //     uint16_t lo =  Nom[i] & 0xFF;
+    //     Nom[i] = lo<<8 | hi;
+    // }
 }
 
 void loop() {
+  myTFT.FillScreenFast(ST77XX_BLUE);
+  myTFT.FillScreenFast(ST77XX_GREEN);
+  myTFT.FillScreenFast(ST77XX_RED);
     // Check border
 
     // myTFT.setFont(&PoppinsMedium7pt7b);
@@ -55,19 +51,6 @@ void loop() {
     // myTFT.setCursor(10,10);
     // myTFT.print("Bonjour");
 
-    sensor_CAPTEUR_THERMO.requestTemperatures();
-    if (sensor_CAPTEUR_THERMO.isConversionComplete()) {
-        float temperature = sensor_CAPTEUR_THERMO.getTempCByIndex(0);
-        if(temperature != LastTemperature) {
-            myTFT.FillRectangleFast(0,0,128,21,ST7735_WHITE);
-            myTFT.setFont(&PoppinsMedium12pt7b);
-            myTFT.setTextColor(0xda28,ST7735_WHITE);
-            myTFT.setTextSize(1);
-            myTFT.setCursor(0,20);
-            myTFT.print("T : " + String(temperature,1)  + " C");
-            LastTemperature = temperature;
-        }
-    }
 
     // myTFT.drawFastHLine(0,0,myTFT.getWidth(),ST7735_RED);
     // myTFT.drawFastHLine(0,myTFT.getHeight()-1,myTFT.getWidth(),ST7735_RED);

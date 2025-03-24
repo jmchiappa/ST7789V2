@@ -1,5 +1,6 @@
-#include "ST7735V2.h"
-#include "Adafruit_ST7735.h"
+#include "ST7789V2.h"
+// #include "Adafruit_ST7735.h"
+#include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
 
 #define DELAY 0x80
 
@@ -15,14 +16,14 @@
     @param  rst  Reset pin # (optional, pass -1 if unused)
 */
 
-ST7735V2::ST7735V2(SPIClass *spiClass, int8_t cs, int8_t dc, int8_t rst)
-  : Adafruit_ST7735(spiClass,  cs,  dc,  rst ) {
+ST7789V2::ST7789V2(SPIClass *spiClass, int8_t cs, int8_t dc, int8_t rst)
+  : Adafruit_ST7789(spiClass,  cs,  dc,  rst ) {
       cs_ = digitalPinToPinName(cs);
       dc_ = digitalPinToPinName(dc);
       reset_ = digitalPinToPinName(rst);
   }
 
-// void ST7735V2::setAddrWindow(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
+// void ST7789V2::setAddrWindow(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
 //     // column address set
 //     ST7735_WriteCommand(ST77XX_CASET);
 //     uint8_t data[] = { 0x00, x0 + _colstart, 0x00, x1 + _colstart };
@@ -38,40 +39,73 @@ ST7735V2::ST7735V2(SPIClass *spiClass, int8_t cs, int8_t dc, int8_t rst)
 //     ST7735_WriteCommand(ST77XX_RAMWR);
 // }
 
-void ST7735V2::FillRectangleFast(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {
+void ST7789V2::FillRectangleFast(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {
     // clipping
     // if((x >= Adafruit_ST7735::_width) || (y >= Adafruit_ST7735::_height)) return;
     // if((x + w - 1) >= Adafruit_ST7735::_width) w = Adafruit_ST7735::_width - x;
     // if((y + h - 1) >= Adafruit_ST7735::_height) h = Adafruit_ST7735::_height - y;
+    uint8_t nbChunks = 0;
+    // uint8_t pixel[] = {color & 0xFF,color >> 8};
+    uint8_t pixel[] = {color >> 8,color & 0xFF};
 
-    startWrite();
-    setAddrWindow(x, y, x+w, y+h);
+    uint32_t volume = h * w * sizeof(pixel);
 
-    // Prepare whole line in a single buffer
-    uint8_t pixel[] = {color & 0xFF,color >> 8};
-    uint8_t *buffer = (uint8_t *)malloc(h * w * sizeof(pixel));
-    for(x = 0; x < w * h; ++x)
-    	memcpy(buffer + x * sizeof(pixel), pixel, sizeof(pixel));
+    uint8_t *buffer = NULL;
 
-    // digitalWriteFast(dc_,HIGH);
-    hwspi._spi->transfer( buffer, h * w * sizeof(pixel));
+    // SPI driver can't send more than 64KB
+    while(volume>65536) {
+      volume >>=1;
+      nbChunks++;
+    }
+
+    do {
+      buffer = (uint8_t *)malloc(volume);
+      if(buffer == NULL) {
+        volume >>= 1;
+        nbChunks++;
+      }
+    }
+    while (buffer == NULL );
+
+    for(uint32_t p = 0; p < volume; p+=2)
+      memcpy(buffer + p, pixel, sizeof(pixel));
+
+    // on prend arbitrairement une variable pour découper le transfert
+    uint16_t chunkBlockSize = h / (1 << nbChunks);
+    uint16_t chunkNb = 0;
+    uint8_t nbCycles = 1 << nbChunks;
+    uint16_t y1;
+    uint16_t hrest;
+    do {
+      hrest = h - chunkNb * chunkBlockSize;
+      uint16_t chunkSize = min(chunkBlockSize, hrest);
+      y1 = y + chunkNb * chunkBlockSize;
+      startWrite();
+      setAddrWindow(x, y1, x+w, y1 + chunkSize);
+
+      // Prepare whole line in a single buffer
+      // uint8_t *buffer = (uint8_t *)malloc(h * w * sizeof(pixel));
+
+      // digitalWriteFast(dc_,HIGH);
+      hwspi._spi->transfer( buffer, w * chunkSize * sizeof(pixel));
+      endWrite();
+    } while(chunkNb++ < nbCycles);
 
     free(buffer);
-    endWrite();
 }
 
-void ST7735V2::FillScreenFast(uint16_t color) {
-    FillRectangleFast(0, 0, Adafruit_ST7735::_width, Adafruit_ST7735::_height, color);
+void ST7789V2::FillScreenFast(uint16_t color) {
+    FillRectangleFast(0, 0, Adafruit_ST7789::_width, Adafruit_ST7789::_height, color);
 }
 
-void ST7735V2::drawRGBBitmap(int16_t x, int16_t y, const uint16_t bitmap[], int16_t w, int16_t h) {
+void ST7789V2::drawRGBBitmap(int16_t x, int16_t y, const uint16_t bitmap[], int16_t w, int16_t h) {
   startWrite();
   setAddrWindow(x,y,w,h);
   hwspi._spi->transfer( (void *)bitmap, w * h * sizeof(uint16_t));
   endWrite();
 }
 
-size_t ST7735V2::write(uint8_t c) {
+size_t ST7789V2::write(uint8_t c) {
   if (!gfxFont) { // 'Classic' built-in font
 
     if (c == '\n') {              // Newline?
@@ -131,7 +165,7 @@ size_t ST7735V2::write(uint8_t c) {
     @param    size_y  Font magnification level in Y-axis, 1 is 'original' size
 */
 /**************************************************************************/
-void ST7735V2::drawChar(int16_t x, int16_t y, unsigned char c,
+void ST7789V2::drawChar(int16_t x, int16_t y, unsigned char c,
                             uint16_t color, uint16_t bg, uint8_t size_x,
                             uint8_t size_y) {
 
