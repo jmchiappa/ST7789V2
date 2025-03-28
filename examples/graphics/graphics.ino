@@ -5,7 +5,7 @@
 #include <Adafruit_GFX.h>
 #include <GFXFonts.h>
 #include <Fonts/PoppinsMedium12pt7b.h>
-// #include "img.h"
+#include "img.h"
 
 #define CS_PIN  D4
 #define RESET_PIN D3
@@ -23,13 +23,14 @@ void setup() {
     Serial.println("cleanup screen");
     myTFT.FillScreenFast(ST77XX_BLACK);
     delay(1000);
-    Serial.println("Ready !");
-    myTFT.FillRectangleFast(0,0,128,30,ST77XX_WHITE);
-    myTFT.setFont(&PoppinsMedium12pt7b);
-    myTFT.setTextColor(0xda28,ST77XX_WHITE);
-    myTFT.setTextSize(1);
-    myTFT.setCursor(0,20);
-    myTFT.print("HELLO");
+    // Serial.println("Ready !");
+    // myTFT.FillRectangleFast(0,0,128,30,ST77XX_WHITE);
+    // myTFT.setFont(&PoppinsMedium12pt7b);
+    // myTFT.setTextColor(0xda28,ST77XX_WHITE);
+    // myTFT.setTextSize(1);
+    // myTFT.setCursor(0,20);
+    // myTFT.print("HELLO");
+    myTFT.drawRGBBitmap(0,0,Nom,Nom_WIDTH,Nom_HEIGHT);
 
 // swap pixel LSB/MSB
     // for( uint16_t i=0; i< Nom_HEIGHT * Nom_WIDTH ; i++) {
@@ -40,9 +41,9 @@ void setup() {
 }
 
 void loop() {
-  myTFT.FillScreenFast(ST77XX_BLUE);
-  myTFT.FillScreenFast(ST77XX_GREEN);
-  myTFT.FillScreenFast(ST77XX_RED);
+  // myTFT.FillScreenFast(ST77XX_BLUE);
+  // myTFT.FillScreenFast(ST77XX_GREEN);
+  // myTFT.FillScreenFast(ST77XX_RED);
     // Check border
 
     // myTFT.setFont(&PoppinsMedium7pt7b);
@@ -84,6 +85,5 @@ void loop() {
     // myTFT.FillScreenFast(ST7735_WHITE);
     // delay(500);
 
-    // myTFT.drawRGBBitmap(0,0,Nom,Nom_WIDTH,Nom_HEIGHT);
     // delay(3000);
 }

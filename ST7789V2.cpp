@@ -99,10 +99,37 @@ void ST7789V2::FillScreenFast(uint16_t color) {
 }
 
 void ST7789V2::drawRGBBitmap(int16_t x, int16_t y, const uint16_t bitmap[], int16_t w, int16_t h) {
+  uint8_t nbChunks = 0;
+  uint32_t volume = h * w * 2;
+
+  uint8_t *buffer = (uint8_t *)bitmap;
+
+  // SPI driver can't send more than 64KB
+  while(volume>65536) {
+    volume >>=1;
+    nbChunks++;
+  }
+
+  // on prend arbitrairement une variable pour découper le transfert
+  uint16_t chunkBlockSize = h / (1 << nbChunks);
+  uint16_t chunkNb = 0;
+  uint8_t nbCycles = 1 << nbChunks;
+  uint16_t y1;
+  uint16_t hrest;
+
   startWrite();
   setAddrWindow(x,y,w,h);
-  hwspi._spi->transfer( (void *)bitmap, w * h * sizeof(uint16_t));
-  endWrite();
+
+  do {
+    hrest = h - chunkNb * chunkBlockSize;
+    uint16_t chunkSize = min(chunkBlockSize, hrest);
+    y1 = y + chunkNb * chunkBlockSize;
+    startWrite();
+    setAddrWindow(x, y1, x+w, y1 + chunkSize);
+
+    hwspi._spi->transfer( &buffer[chunkNb * chunkBlockSize * 2 * w], w * chunkSize * 2);
+    endWrite();
+  } while(chunkNb++ < nbCycles);
 }
 
 size_t ST7789V2::write(uint8_t c) {
