@@ -102,9 +102,6 @@ void ST7789V2::drawRGBBitmap(int16_t x, int16_t y, const uint16_t bitmap[], int1
   uint8_t nbChunks = 0;
   uint32_t volume = h * w * 2;
 
-  for(uint32_t i=0;i<w*h;i++) {
-    bitmap[i] = ((bitmap[i]>>8) & 0xFF) | ((bitmap[i] << 8) & 0xFF00);
-  }
   uint8_t *buffer = (uint8_t *)bitmap;
 
   // SPI driver can't send more than 64KB
